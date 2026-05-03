@@ -1,31 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { loadPackages, savePackage, removePackage, subscribePackages } from "./firebase";
 import { Package, CheckCircle2, Clock, Search, Plus, Bell, Home, X, Truck, User, Hash, Calendar, AlertCircle, KeyRound, LogOut, Copy, MessageSquare } from "lucide-react";
 
-// 用 localStorage 模擬 window.storage 介面（跨裝置時需改為呼叫後端 API）
-if (typeof window !== "undefined" && !window.storage) {
-  window.storage = {
-    get: async (key) => {
-      const value = localStorage.getItem(key);
-      return value !== null ? { value } : null;
-    },
-    set: async (key, value) => {
-      localStorage.setItem(key, value);
-      return { value };
-    },
-    delete: async (key) => {
-      localStorage.removeItem(key);
-      return { deleted: true };
-    },
-    list: async (prefix = "") => {
-      const keys = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith(prefix)) keys.push(k);
-      }
-      return { keys };
-    },
-  };
-}
+
 
 export default function PackageManagementSystem() {
   const [view, setView] = useState("admin");
@@ -86,32 +63,27 @@ export default function PackageManagementSystem() {
     loadData();
   }, []);
 
-  const loadData = async () => {
+const loadData = async () => {
     try {
-      const result = await window.storage.get("packages_data", true);
-      if (result && result.value) {
-        setPackages(JSON.parse(result.value));
-      }
-    } catch (e) {}
-    try {
-      const notifs = await window.storage.get("notifications_data", true);
-      if (notifs && notifs.value) {
-        setNotifications(JSON.parse(notifs.value));
-      }
-    } catch (e) {}
+      const list = await loadPackages();
+      setPackages(list);
+    } catch (e) {
+      console.error("載入失敗", e);
+    }
     setLoading(false);
   };
 
-  const saveData = async (newPackages, newNotifs = null) => {
-    try {
-      await window.storage.set("packages_data", JSON.stringify(newPackages), true);
-      if (newNotifs !== null) {
-        await window.storage.set("notifications_data", JSON.stringify(newNotifs), true);
-      }
-    } catch (e) {
-      console.error("儲存失敗", e);
-    }
-  };
+  // 訂閱即時更新：其他裝置修改後會自動同步
+  useEffect(() => {
+    const unsubscribe = subscribePackages((list) => {
+      setPackages(list);
+    });
+    return () => unsubscribe();
+  }, []);
+
+// saveData 已不再需要（Firebase 自動同步）
+  // 保留空殼以相容於原有呼叫
+  const saveData = async () => {};
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -162,9 +134,7 @@ export default function PackageManagementSystem() {
     };
     const updatedNotifs = [notif, ...notifications].slice(0, 50);
 
-    setPackages(updated);
-    setNotifications(updatedNotifs);
-    await saveData(updated, updatedNotifs);
+    await savePackage(newPkg);
 
     setForm({ unit: "", residentName: "", courier: "", trackingNo: "", note: "" });
     setShowAddModal(false);
@@ -183,18 +153,13 @@ export default function PackageManagementSystem() {
       showToast("請輸入領取人姓名", "error");
       return;
     }
-    const updated = packages.map((p) =>
-      p.id === pickupModal.id
-        ? {
-            ...p,
-            status: "picked",
-            pickedAt: new Date().toISOString(),
-            pickedBy: name,
-          }
-        : p
-    );
-    setPackages(updated);
-    await saveData(updated);
+const updatedPkg = {
+      ...pickupModal,
+      status: "picked",
+      pickedAt: new Date().toISOString(),
+      pickedBy: name,
+    };
+    await savePackage(updatedPkg);
     setPickupModal(null);
     setPickupName("");
     showToast(`已由 ${name} 領取`);
@@ -294,8 +259,7 @@ export default function PackageManagementSystem() {
         ? { ...p, ...form, trackingNo: trimmedNo, unit: parsed.formatted }
         : p
     );
-    setPackages(updated);
-    await saveData(updated);
+await savePackage(updated.find((p) => p.id === editingPackage.id));
     setForm({ unit: "", residentName: "", courier: "", trackingNo: "", note: "" });
     setEditingPackage(null);
     setShowAddModal(false);
@@ -347,8 +311,7 @@ export default function PackageManagementSystem() {
           }
         : p
     );
-    setPackages(updated);
-    await saveData(updated);
+  await savePackage(updated.find((p) => p.id === messageModal.packageId));
     setMessageModal(null);
     setMessageInput("");
     showToast("已留言給管理員");
@@ -362,8 +325,7 @@ export default function PackageManagementSystem() {
         ? { ...p, residentMessage: null, residentMessageAt: null }
         : p
     );
-    setPackages(updated);
-    await saveData(updated);
+    await savePackage(updated.find((p) => p.id === messageModal.packageId));
     setMessageModal(null);
     setMessageInput("");
     showToast("已刪除留言");
