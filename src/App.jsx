@@ -23,10 +23,10 @@ export default function PackageManagementSystem() {
   const [messageInput, setMessageInput] = useState("");
 
   // 住戶端登入狀態
-  const [residentUnit, setResidentUnit] = useState(() => {
+  const [residentUnit, setResidentUnit] = useState("");
+  const [unitInput, setUnitInput] = useState(() => {
     return localStorage.getItem("savedResidentUnit") || "";
   });
-  const [unitInput, setUnitInput] = useState("");
 
   // 管理員登入狀態（社區共用密碼）
   const ADMIN_PASSWORD = "changfeng2025";
@@ -364,7 +364,7 @@ await savePackage(updated.find((p) => p.id === editingPackage.id));
       setFilter("all");
       setIsAdminLoggedIn(false);
     } else {
-      setResidentUnit("");
+      
     }
   };
 
