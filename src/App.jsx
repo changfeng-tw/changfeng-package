@@ -195,7 +195,7 @@ const updatedPkg = {
     }
   };
 
-  // 產生今日彙總訊息
+// 產生今日彙總訊息
   const generateTodaySummary = () => {
     const today = new Date().toDateString();
     const todayPackages = packages.filter(
@@ -208,6 +208,9 @@ const updatedPkg = {
     todayPackages.forEach((p) => {
       courierCounts[p.courier] = (courierCounts[p.courier] || 0) + 1;
     });
+
+    // 目前所有待領取的包裹總數
+    const pendingTotal = packages.filter((p) => p.status === "pending").length;
 
     const dateStr = new Date().toLocaleDateString("zh-TW", {
       month: "numeric",
@@ -222,10 +225,11 @@ const updatedPkg = {
         .sort((a, b) => b[1] - a[1])
         .map(([courier, count]) => `・${courier} ${count} 件`),
       ``,
-      `請住戶至系統查詢自己的包裹`,
-      `https://changfeng-package.vercel.app/` ,// 確保有引號和逗號
+      `截至目前尚有 ${pendingTotal} 件包裹待領`,
+      `請住戶至系統查詢包裹`,
+      `https://changfeng-package.vercel.app/`,
       ``,
-      `請住戶於AM08:00-PM08:00至警衛室領取包裹`
+      `請於 AM08:00 - PM08:00 至警衛室領取包裹`,
     ];
     return lines.join("\n");
   };
