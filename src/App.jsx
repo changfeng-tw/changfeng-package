@@ -212,6 +212,9 @@ const updatedPkg = {
         .map(([courier, count]) => `・${courier} ${count} 件`),
       ``,
       `請住戶至系統查詢自己的包裹`,
+      `https://changfeng-package.vercel.app/` ,// 確保有引號和逗號
+      ``,
+      `請住戶於AM08:00-PM08:00至警衛室領取包裹`
     ];
     return lines.join("\n");
   };
