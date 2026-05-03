@@ -30,8 +30,17 @@ export default function PackageManagementSystem() {
 
   // 管理員登入狀態（社區共用密碼）
   const ADMIN_PASSWORD = "changfeng2025";
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
+    const expires = localStorage.getItem("adminLoginExpires");
+    if (!expires) return false;
+    if (Date.now() > parseInt(expires)) {
+      localStorage.removeItem("adminLoginExpires");
+      return false;
+    }
+    return true;
+  });
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
+  const [rememberAdmin, setRememberAdmin] = useState(true);
 
   const [form, setForm] = useState({
     unit: "",
@@ -343,6 +352,10 @@ await savePackage(updated.find((p) => p.id === editingPackage.id));
     if (adminPasswordInput === ADMIN_PASSWORD) {
       setIsAdminLoggedIn(true);
       setAdminPasswordInput("");
+      if (rememberAdmin) {
+        const expires = Date.now() + 3 * 24 * 60 * 60 * 1000; // 3 天
+        localStorage.setItem("adminLoginExpires", expires.toString());
+      }
       showToast("管理員身份已驗證");
     } else {
       showToast("密碼錯誤", "error");
@@ -352,6 +365,7 @@ await savePackage(updated.find((p) => p.id === editingPackage.id));
 
   const handleAdminLogout = () => {
     setIsAdminLoggedIn(false);
+    localStorage.removeItem("adminLoginExpires");
     setSearchUnit("");
     setFilter("all");
     showToast("已登出");
@@ -362,7 +376,6 @@ await savePackage(updated.find((p) => p.id === editingPackage.id));
     if (v === "resident") {
       setSearchUnit("");
       setFilter("all");
-      setIsAdminLoggedIn(false);
     } else {
       
     }
@@ -500,8 +513,17 @@ await savePackage(updated.find((p) => p.id === editingPackage.id));
                 onChange={(e) => setAdminPasswordInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()}
                 autoFocus
-                className="w-full px-4 py-3 bg-stone-50 border border-stone-200 focus:border-stone-900 outline-none text-stone-900 text-lg tracking-wider mb-4"
+                className="w-full px-4 py-3 bg-stone-50 border border-stone-200 focus:border-stone-900 outline-none text-stone-900 text-lg tracking-wider mb-3"
               />
+              <label className="flex items-center gap-2 mb-4 text-sm text-stone-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberAdmin}
+                  onChange={(e) => setRememberAdmin(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span>記住我（3 天內免再次輸入）</span>
+              </label>
               <button
                 onClick={handleAdminLogin}
                 className="w-full py-3 bg-amber-700 hover:bg-amber-800 text-amber-50 transition"
@@ -837,19 +859,47 @@ await savePackage(updated.find((p) => p.id === editingPackage.id));
                 <label className="block text-xs tracking-wider text-stone-500 uppercase mb-1.5">
                   房號 <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="例：3號5樓"
-                  value={form.unit}
-                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                  className={`w-full px-3 py-2.5 bg-stone-50 border outline-none text-stone-900 ${
-                    form.unit && !isValidUnit(form.unit)
-                      ? "border-rose-400 focus:border-rose-500"
-                      : "border-stone-200 focus:border-stone-900"
-                  }`}
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="號"
+                    value={form.unitNum || ""}
+                    onChange={(e) => {
+                      const num = e.target.value;
+                      const floor = form.unitFloor || "";
+                      setForm({
+                        ...form,
+                        unitNum: num,
+                        unit: num && floor ? `${num}號${floor}樓` : "",
+                      });
+                    }}
+                    className="w-20 px-3 py-2.5 bg-stone-50 border border-stone-200 focus:border-stone-900 outline-none text-stone-900 text-center"
+                  />
+                  <span className="text-stone-600">號</span>
+                  <input
+                    type="tel" 
+                    inputMode="numeric"
+                    placeholder="樓"
+                    value={form.unitFloor || ""}
+                    onChange={(e) => {
+                      const floor = e.target.value;
+                      const num = form.unitNum || "";
+                      setForm({
+                        ...form,
+                        unitFloor: floor,
+                        unit: num && floor ? `${num}號${floor}樓` : "",
+                      });
+                    }}
+                    className="w-20 px-3 py-2.5 bg-stone-50 border border-stone-200 focus:border-stone-900 outline-none text-stone-900 text-center"
+                  />
+                  <span className="text-stone-600">樓</span>
+                  {form.unit && (
+                    <span className="text-sm text-stone-500 ml-2">→ {form.unit}</span>
+                  )}
+                </div>
                 <div className="mt-1.5 text-xs text-stone-400">
-                  格式：<span className="font-mono">O號O樓</span>（例：3號5樓、12號8樓）
+                  輸入數字即可，自動加上「號」「樓」
                 </div>
               </div>
 
