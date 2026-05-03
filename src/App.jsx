@@ -5,7 +5,7 @@ import { Package, CheckCircle2, Clock, Search, Plus, Bell, Home, X, Truck, User,
 
 
 export default function PackageManagementSystem() {
-  const [view, setView] = useState("admin");
+  const [view, setView] = useState("resident");
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -23,7 +23,9 @@ export default function PackageManagementSystem() {
   const [messageInput, setMessageInput] = useState("");
 
   // 住戶端登入狀態
-  const [residentUnit, setResidentUnit] = useState("");
+  const [residentUnit, setResidentUnit] = useState(() => {
+    return localStorage.getItem("savedResidentUnit") || "";
+  });
   const [unitInput, setUnitInput] = useState("");
 
   // 管理員登入狀態（社區共用密碼）
@@ -282,11 +284,13 @@ await savePackage(updated.find((p) => p.id === editingPackage.id));
       return;
     }
     setResidentUnit(parsed.formatted);
+    localStorage.setItem("savedResidentUnit", parsed.formatted);
     setUnitInput("");
   };
 
   const handleResidentLogout = () => {
     setResidentUnit("");
+    localStorage.removeItem("savedResidentUnit");
     setFilter("all");
     setSearchUnit("");
   };
