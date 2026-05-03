@@ -396,12 +396,25 @@ await savePackage(updated.find((p) => p.id === editingPackage.id));
     : packages
   ).filter(isWithinRetention);
 
-  const filteredPackages = visiblePackages.filter((p) => {
-    if (filter === "pending" && p.status !== "pending") return false;
-    if (filter === "picked" && p.status !== "picked") return false;
-    if (view === "admin" && searchUnit && !p.unit.toLowerCase().includes(searchUnit.toLowerCase())) return false;
-    return true;
-  });
+  const filteredPackages = visiblePackages
+    .filter((p) => {
+      if (filter === "pending" && p.status !== "pending") return false;
+      if (filter === "picked" && p.status !== "picked") return false;
+      if (view === "admin" && searchUnit && !p.unit.toLowerCase().includes(searchUnit.toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      // 待領在上、已領在下
+      if (a.status !== b.status) {
+        return a.status === "pending" ? -1 : 1;
+      }
+      // 待領取：最早到最晚（舊的在上）
+      if (a.status === "pending") {
+        return new Date(a.arrivedAt) - new Date(b.arrivedAt);
+      }
+      // 已領取：最晚到最早（剛領的在上）
+      return new Date(b.pickedAt || b.arrivedAt) - new Date(a.pickedAt || a.arrivedAt);
+    });
 
   const statBase = visiblePackages;
   const pendingCount = statBase.filter((p) => p.status === "pending").length;
